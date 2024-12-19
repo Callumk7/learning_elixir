@@ -1,8 +1,8 @@
 defmodule Todo.Server do
-  use GenServer
+  use GenServer, restart: :temporary
 
   def start_link(list_name) do
-    GenServer.start_link(__MODULE__, list_name)
+    GenServer.start_link(__MODULE__, list_name, name: via_tuple(list_name))
   end
 
   def add_entry(todo_list, entry) do
@@ -16,6 +16,8 @@ defmodule Todo.Server do
   def entries(todo_list, date) do
     GenServer.call(todo_list, {:entries, date})
   end
+
+  # Callbacks
 
   @impl GenServer
   def init(list_name) do
@@ -47,4 +49,52 @@ defmodule Todo.Server do
   def handle_call({:entries, date}, _from, {list_name, todo_list}) do
     {:reply, Todo.List.entries(todo_list, date), {list_name, todo_list}}
   end
+
+  # Private helpers
+
+  defp via_tuple(list_name) do
+    Todo.ProcessRegistry.via_tuple({__MODULE__, list_name})
+  end
 end
+
+# # Agent version of the Server module
+# defmodule Todo.Server do
+#   use Agent, restart: :temporary
+#
+#   def start_link(list_name) do
+#     Agent.start_link(
+#       fn ->
+#         IO.puts("Starting todo server for #{list_name}")
+#         {list_name, Todo.Database.get(list_name) || Todo.List.new()}
+#       end,
+#       name: via_tuple(list_name)
+#     )
+#   end
+#
+#   def add_entry(todo_list, entry) do
+#     Agent.cast(todo_list, fn {list_name, todo_list} ->
+#       new_list = Todo.List.add_entry(todo_list, entry)
+#       Todo.Database.store(list_name, new_list)
+#       {list_name, new_list}
+#     end)
+#   end
+#
+#   def update_entry(todo_list, id, updater_fn) do
+#     Agent.cast(todo_list, fn {list_name, todo_list} ->
+#       new_list = Todo.List.update_entry(todo_list, id, updater_fn)
+#       Todo.Database.store(list_name, new_list)
+#       {list_name, new_list}
+#     end)
+#   end
+#
+#   def entries(todo_list, date) do
+#     Agent.get(todo_list, fn {_name, todo_list} -> Todo.List.entries(todo_list, date) end)
+#   end
+#
+#   # Private helpers
+#
+#   defp via_tuple(list_name) do
+#     Todo.ProcessRegistry.via_tuple({__MODULE__, list_name})
+#   end
+# end
+#
