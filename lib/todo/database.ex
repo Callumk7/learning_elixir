@@ -3,7 +3,6 @@ defmodule Todo.Database do
   @num_workers 3
 
   def start_link do
-    IO.puts("Starting the todo database")
     File.mkdir_p!(@db_folder)
 
     children = Enum.map(1..@num_workers, &worker_spec/1)
